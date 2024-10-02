@@ -1,10 +1,12 @@
-from django.shortcuts import render
-from django.http import StreamingHttpResponse
+from django.shortcuts import render, redirect # type: ignore
+from django.http import StreamingHttpResponse # type: ignore
 from core.utils.videoReconocer import   generate_frames
 from core.utils.videoCapturar import capture_plate
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.models import User
-from django.http import HttpResponse
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm # type: ignore
+from django.contrib.auth.models import User # type: ignore
+from django.contrib.auth import login, logout, authenticate # type: ignore
+from django.http import HttpResponse # type: ignore
+from django.db import IntegrityError # type: ignore
 
 # Vista para la página principal
 def home(request):
@@ -19,27 +21,50 @@ def captura(request):
 def main(request):
     return render(request, 'main.html')
 
-def login(request):
-    return render(request, 'login.html')
+#Vista Iniciar Sesion
+def inicioSesion(request):
+    if request.method == 'GET':
+        return render(request, 'login.html',{
+            'form': AuthenticationForm
+        })
+    else:
+        user = authenticate(request, username=request.POST['username'], password=request.POST['password'])
+        
+        if user is None:
+            return render(request, 'login.html',{
+                'form': AuthenticationForm,
+                'error': 'Usuario o password esta incorrecto'
+        })
+        else:
+            login(request, user)
+            return redirect('main')
 
-def login_view(request):
+# Vista Crear Usuario
+def registro (request):
 
     if request.method == 'GET':
-        return render(request, 'login_2.html',{
-            'form': UserCreationForm
-        })
+        return render(request, 'registro.html',{
+            'form': UserCreationForm})
     else:
         if request.POST['password1'] == request.POST['password2']:
            try:
-                user = User.objects.create_user(username=request.POST['username'], password=request.POST['password1'])
+                user = User.objects.create_user(
+                    username=request.POST['username'], password=request.POST['password1'])
                 user.save()
-                return HttpResponse('Usuario Creado') 
-           except:
-               return HttpResponse('Usuario ya existe')
+                login(request, user)
+                return redirect('main')
+           except IntegrityError:
+               return render(request, 'registro.html',{
+                   'form': UserCreationForm,
+                   'error':'Usuario ya existe'})
            
-        return HttpResponse('Password no coincide') 
+        return render(request, 'registro.html', {"form": UserCreationForm, "error": "Password no coincide."})
     
-
+# Vista Cerrar Sesion    
+def cerrarSesion(request):
+    logout(request)
+    return redirect('inicioSesion')
+    
 # Vista para el feed de video
 def video_feed(request):
     return StreamingHttpResponse(generate_frames(), content_type='multipart/x-mixed-replace; boundary=frame')

@@ -14,7 +14,8 @@
         </div>
         <div class="form-section">
             <h2 class="form-title">Iniciar Sesión</h2>
-            <form id="loginForm">
+            <form method="POST">
+                {% csrf_token %}
                 <div class="form-group">
                     <label for="username">Usuario</label>
                     <input type="text" id="username" name="username" placeholder="Usuario" autocomplete="username">
